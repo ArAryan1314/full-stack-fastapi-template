@@ -1,3 +1,11 @@
+<!-- fork-notice:start -->
+
+> **About this fork:** maintained copy of [fastapi/full-stack-fastapi-template](https://github.com/fastapi/full-stack-fastapi-template), used for learning and integration. All credit for the original work goes to its authors. License: MIT (see `LICENSE`).
+>
+> [![Standard CI](https://github.com/ArAryan1314/full-stack-fastapi-template/actions/workflows/standard-ci.yml/badge.svg)](https://github.com/ArAryan1314/full-stack-fastapi-template/actions/workflows/standard-ci.yml)
+
+<!-- fork-notice:end -->
+
 # Full Stack FastAPI Template
 
 [![Test Docker Compose](../../actions/workflows/test-docker-compose.yml/badge.svg)](../../actions/workflows/test-docker-compose.yml)

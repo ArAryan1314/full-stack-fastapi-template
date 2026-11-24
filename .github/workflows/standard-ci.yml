@@ -1,0 +1,104 @@
+name: Standard CI
+
+on:
+  push:
+  pull_request:
+  workflow_dispatch:
+
+permissions:
+  contents: read
+
+concurrency:
+  group: ci-${{ github.ref }}
+  cancel-in-progress: true
+
+env:
+  CI: true
+  SKIP_ENV_VALIDATION: 1
+  NEXT_TELEMETRY_DISABLED: 1
+
+jobs:
+  node-root:
+    name: Node (.)
+    runs-on: ubuntu-latest
+    timeout-minutes: 20
+    defaults:
+      run:
+        working-directory: .
+    steps:
+      - uses: actions/checkout@v5
+      - uses: oven-sh/setup-bun@v2
+      - uses: actions/setup-node@v5
+        with:
+          node-version: 22
+          package-manager-cache: false
+      - name: Install
+        run: bun install
+      - name: Lint
+        run: bun run lint
+      - name: Test (e2e, report only)
+        continue-on-error: true
+        run: bun run test
+      - name: Dependency audit (report only)
+        continue-on-error: true
+        run: bun audit
+
+  python-root:
+    name: Python (.)
+    runs-on: ubuntu-latest
+    timeout-minutes: 20
+    defaults:
+      run:
+        working-directory: .
+    steps:
+      - uses: actions/checkout@v5
+      - uses: astral-sh/setup-uv@v6
+      - name: Install
+        run: uv sync --all-extras --all-groups
+      - name: Lint (ruff, report only)
+        continue-on-error: true
+        run: uvx ruff check .
+      - name: Smoke test (all files compile)
+        run: python -m compileall -q .
+      - name: Dependency audit (report only)
+        continue-on-error: true
+        run: uvx pip-audit
+
+  python-backend:
+    name: Python (backend)
+    runs-on: ubuntu-latest
+    timeout-minutes: 20
+    services:
+      postgres:
+        image: postgres:17
+        env:
+          POSTGRES_USER: postgres
+          POSTGRES_PASSWORD: changethis
+          POSTGRES_DB: app
+        ports:
+          - 5432:5432
+        options: >-
+          --health-cmd pg_isready --health-interval 5s --health-timeout 5s --health-retries 10
+    env:
+      DATABASE_URL: postgresql://postgres:changethis@localhost:5432/app
+      DIRECT_URL: postgresql://postgres:changethis@localhost:5432/app
+      POSTGRES_PRISMA_URL: postgresql://postgres:changethis@localhost:5432/app
+      POSTGRES_URL_NON_POOLING: postgresql://postgres:changethis@localhost:5432/app
+      POSTGRES_URL: postgresql://postgres:changethis@localhost:5432/app
+      POSTGRES_SERVER: localhost
+      POSTGRES_PORT: 5432
+    defaults:
+      run:
+        working-directory: backend
+    steps:
+      - uses: actions/checkout@v5
+      - uses: astral-sh/setup-uv@v6
+      - name: Install
+        run: uv sync --all-extras --all-groups
+      - name: Lint (ruff)
+        run: uvx ruff check .
+      - name: Test
+        run: uv run bash -c 'bash scripts/prestart.sh && bash scripts/tests-start.sh'
+      - name: Dependency audit (report only)
+        continue-on-error: true
+        run: uvx pip-audit
